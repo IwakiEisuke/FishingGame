@@ -7,7 +7,6 @@ public class FootIK : MonoBehaviour
     [SerializeField] bool _enableHint;
     [SerializeField] float _rayDistance = 1;
     [SerializeField] float _footHeight = 0.2f;
-    [SerializeField] float _footRadius = 0.2f;
     [Header("LeftFoot")]
     [SerializeField] Transform _left;
     [SerializeField, Range(0, 1)] float _leftPositionWeight = 1;
@@ -32,6 +31,12 @@ public class FootIK : MonoBehaviour
 
     private void OnAnimatorIK(int layerIndex)
     {
+        print(_anim.GetFloat("LeftIKWeight"));
+        _leftPositionWeight = _anim.GetFloat("LeftIKWeight");
+        _leftRotationWeight = _anim.GetFloat("LeftIKWeight");
+        _rightPositionWeight = _anim.GetFloat("RightIKWeight");
+        _rightRotationWeight = _anim.GetFloat("RightIKWeight");
+
         SetFootIK(AvatarIKGoal.LeftFoot, _leftPositionWeight, _leftRotationWeight);
         SetHintIK(AvatarIKHint.LeftKnee, _leftKneeWeight, _leftKneeAnchor);
 
