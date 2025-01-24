@@ -62,9 +62,8 @@ public class FootIK : MonoBehaviour
                 _anim.SetIKPosition(part, newIKPos);
 
                 Debug.DrawRay(hit.point, hit.normal);
-                Debug.DrawRay(hit.point, Vector3.ProjectOnPlane(transform.forward, hit.normal));
 
-                _anim.SetIKRotation(part, Quaternion.LookRotation(Vector3.ProjectOnPlane(transform.forward, hit.normal), hit.normal));
+                _anim.SetIKRotation(part, Quaternion.FromToRotation(transform.up, hit.normal) * transform.rotation);
             }
         }
     }
