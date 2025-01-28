@@ -28,7 +28,6 @@ public class PlayerController : MonoBehaviour
     float _speed;
 
     float _upperVelocity;
-    bool _isGrounded;
     bool _isStanding;
 
     Vector3 _hipTargetPos;
@@ -57,8 +56,8 @@ public class PlayerController : MonoBehaviour
 
         if (_input != Vector2.zero)
         {
-            var cameraLook = Vector3.ProjectOnPlane(Camera.main.transform.forward, Vector3.up);
-            var moveDir = Quaternion.LookRotation(cameraLook) * new Vector3(_input.x, 0, _input.y);
+            var cameraLook = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up);
+            var moveDir = cameraLook * new Vector3(_input.x, 0, _input.y);
 
             transform.forward = Vector3.Slerp(transform.forward, moveDir, _rotationSpeed);
         }
@@ -67,10 +66,17 @@ public class PlayerController : MonoBehaviour
         _controller.Move(_upperVelocity * Time.deltaTime * Vector3.up);
 
         _upperVelocity -= _gravity * Time.deltaTime;
-        print(_controller.velocity);
-        print(_upperVelocity);
 
-        _legBounce = Mathf.Clamp01(_legBounce + Time.deltaTime * (_isGrounded ? _bounceIncreaseRate : -_bounceDecreaseRate));
+        _legBounce = Mathf.Clamp01(_legBounce + Time.deltaTime * (_controller.isGrounded ? _bounceIncreaseRate : -_bounceDecreaseRate));
+    }
+
+    private void OnGUI()
+    {
+        GUILayout.BeginVertical();
+        GUILayout.Label($"_controller.velocity: {_controller.velocity}");
+        GUILayout.Label($"_upperVelocity: {_upperVelocity}");
+        GUILayout.Label($"isGrounded: {_controller.isGrounded}");
+        GUILayout.EndVertical();
     }
 
     private void OnAnimatorIK(int layerIndex)
@@ -85,8 +91,11 @@ public class PlayerController : MonoBehaviour
         Physics.Raycast(rightRay, out var rightHit, _hipHeight, _groundLayerMask);
 
         var yOffset = Mathf.Abs(leftHit.point.y - rightHit.point.y);
-        _controller.center = Vector3.Lerp(_controller.center, _defaultCenter + Vector3.up * yOffset / 2, Time.deltaTime);
-        _controller.height = _defaultHeight - yOffset;
+        if (yOffset < _hipHeight / 2)
+        {
+            _controller.center = Vector3.Lerp(_controller.center, _defaultCenter + Vector3.up * yOffset / 2, Time.deltaTime);
+            _controller.height = _defaultHeight - yOffset;
+        }
 
         if (_controller.isGrounded)
         {
@@ -110,7 +119,6 @@ public class PlayerController : MonoBehaviour
         {
             var _jumpTime = Mathf.Sqrt(2 * _jumpHeight / _gravity);
             _upperVelocity = (_jumpHeight + _gravity * _jumpTime * _jumpTime / 2) / _jumpTime;
-            _isGrounded = false;
             _anim.SetTrigger("Jump");
         }
     }
