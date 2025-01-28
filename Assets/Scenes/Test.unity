@@ -683,9 +683,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _maxSpeed: 6
-  _animationSpeed: 0.5
+  _animationSpeed: 1
   _moveDirectionSpeed: 0.375
-  _rotationSpeed: 0.375
+  _rotationSpeed: 0.253
   _jumpHeight: 2
   _gravity: 18
   _groundLayerMask:

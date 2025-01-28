@@ -22,15 +22,11 @@ public class PlayerController : MonoBehaviour
     Vector2 _rawInput;
     Vector2 _input;
     Animator _anim;
-    Rigidbody _rigidbody;
+    Rigidbody _rb;
     CharacterController _controller;
 
     float _speed;
-
-    float _upperVelocity;
-    bool _isStanding;
-
-    Vector3 _hipTargetPos;
+    float _upwardVelocity;
 
     Vector3 _defaultCenter;
     float _defaultHeight;
@@ -39,7 +35,7 @@ public class PlayerController : MonoBehaviour
     {
         _anim = GetComponent<Animator>();
         _controller = GetComponent<CharacterController>();
-        _rigidbody = GetComponent<Rigidbody>();
+        _rb = GetComponent<Rigidbody>();
         _defaultCenter = _controller.center;
         _defaultHeight = _controller.height;
     }
@@ -54,18 +50,18 @@ public class PlayerController : MonoBehaviour
         _anim.SetFloat("InputMagnitude", _input.magnitude, _dampTime, Time.deltaTime);
         _anim.SetFloat("Speed", _speed, _dampTime, Time.deltaTime);
 
+        var cameraLook = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up);
+        var moveDir = cameraLook * new Vector3(_input.x, 0, _input.y);
+
         if (_input != Vector2.zero)
         {
-            var cameraLook = Quaternion.AngleAxis(Camera.main.transform.eulerAngles.y, Vector3.up);
-            var moveDir = cameraLook * new Vector3(_input.x, 0, _input.y);
-
             transform.forward = Vector3.Slerp(transform.forward, moveDir, _rotationSpeed);
         }
 
-        _controller.Move(_speed * _animationSpeed * Time.deltaTime * transform.forward);
-        _controller.Move(_upperVelocity * Time.deltaTime * Vector3.up);
+        _controller.Move(_speed * _animationSpeed * Time.deltaTime * moveDir);
+        _controller.Move(_upwardVelocity * Time.deltaTime * Vector3.up);
 
-        _upperVelocity -= _gravity * Time.deltaTime;
+        _upwardVelocity -= _gravity * Time.deltaTime;
 
         _legBounce = Mathf.Clamp01(_legBounce + Time.deltaTime * (_controller.isGrounded ? _bounceIncreaseRate : -_bounceDecreaseRate));
     }
@@ -74,7 +70,7 @@ public class PlayerController : MonoBehaviour
     {
         GUILayout.BeginVertical();
         GUILayout.Label($"_controller.velocity: {_controller.velocity}");
-        GUILayout.Label($"_upperVelocity: {_upperVelocity}");
+        GUILayout.Label($"_upperVelocity: {_upwardVelocity}");
         GUILayout.Label($"isGrounded: {_controller.isGrounded}");
         GUILayout.EndVertical();
     }
@@ -84,29 +80,33 @@ public class PlayerController : MonoBehaviour
         var left = _anim.GetIKPosition(AvatarIKGoal.LeftFoot);
         var right = _anim.GetIKPosition(AvatarIKGoal.RightFoot);
 
-        var leftRay = new Ray(left + _hipHeight / 2 * Vector3.up, Vector3.down);
-        var rightRay = new Ray(right + _hipHeight / 2 * Vector3.up, Vector3.down);
+        var leftRay = new Ray(left + _hipHeight * Vector3.up, Vector3.down);
+        var rightRay = new Ray(right + _hipHeight * Vector3.up, Vector3.down);
 
-        Physics.Raycast(leftRay, out var leftHit, _hipHeight, _groundLayerMask);
-        Physics.Raycast(rightRay, out var rightHit, _hipHeight, _groundLayerMask);
+        Physics.Raycast(leftRay, out var leftHit, _hipHeight * 2, _groundLayerMask);
+        Physics.Raycast(rightRay, out var rightHit, _hipHeight * 2, _groundLayerMask);
 
         var yOffset = Mathf.Abs(leftHit.point.y - rightHit.point.y);
-        if (yOffset < _hipHeight / 2)
-        {
-            _controller.center = Vector3.Lerp(_controller.center, _defaultCenter + Vector3.up * yOffset / 2, Time.deltaTime);
-            _controller.height = _defaultHeight - yOffset;
-        }
+
+        AdjustControllerWithFootIK(yOffset);
 
         if (_controller.isGrounded)
         {
             _anim.SetBool("IsGrounded", true);
-            _upperVelocity = Mathf.Lerp(_upperVelocity, 0, _legBounce);
+            _upwardVelocity = Mathf.Lerp(_upwardVelocity, 0, _legBounce);
         }
         else
         {
             _anim.SetBool("IsGrounded", false);
         }
     }
+
+    void AdjustControllerWithFootIK(float yOffset)
+    {
+        _controller.center = Vector3.MoveTowards(_controller.center, _defaultCenter + Vector3.up * yOffset / 2, Time.deltaTime);
+        _controller.height = _defaultHeight - yOffset;
+    }
+
 
     void OnMove(InputValue value)
     {
@@ -118,15 +118,17 @@ public class PlayerController : MonoBehaviour
         if (value.isPressed)
         {
             var _jumpTime = Mathf.Sqrt(2 * _jumpHeight / _gravity);
-            _upperVelocity = (_jumpHeight + _gravity * _jumpTime * _jumpTime / 2) / _jumpTime;
-            _anim.SetTrigger("Jump");
+            _upwardVelocity = (_jumpHeight + _gravity * _jumpTime * _jumpTime / 2) / _jumpTime;
+            _anim.Play("Jump");
         }
     }
 
+#if UNITY_EDITOR
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position + Vector3.up * _hipHeight, 0.05f);
         Gizmos.DrawLine(transform.position, transform.position + Vector3.up * _hipHeight);
     }
+#endif
 }
