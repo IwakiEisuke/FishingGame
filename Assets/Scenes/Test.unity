@@ -507,9 +507,8 @@ GameObject:
   - component: {fileID: 201801929}
   - component: {fileID: 201801928}
   - component: {fileID: 201801932}
-  - component: {fileID: 201801933}
   - component: {fileID: 201801934}
-  - component: {fileID: 201801935}
+  - component: {fileID: 201801933}
   m_Layer: 6
   m_Name: Human
   m_TagString: Untagged
@@ -562,8 +561,8 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 1
-  m_Radius: 0.53
+  m_Height: 2
+  m_Radius: 0.4
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
@@ -684,7 +683,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _maxSpeed: 6
-  _animationSpeed: 1
+  _animationSpeed: 0.5
   _moveDirectionSpeed: 0.375
   _rotationSpeed: 0.375
   _jumpHeight: 2
@@ -697,27 +696,6 @@ MonoBehaviour:
   _bounceIncreaseRate: 1.5
   _hipHeight: 1.07
   _dampTime: 0.05
---- !u!135 &201801935
-SphereCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 201801926}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 64
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 0
-  serializedVersion: 3
-  m_Radius: 0.5
-  m_Center: {x: 0, y: 0.4, z: 0}
 --- !u!1 &276273676
 GameObject:
   m_ObjectHideFlags: 0

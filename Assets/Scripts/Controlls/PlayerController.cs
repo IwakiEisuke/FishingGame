@@ -27,16 +27,22 @@ public class PlayerController : MonoBehaviour
 
     float _speed;
 
-    float _jumpVelocity;
+    float _upperVelocity;
     bool _isGrounded;
+    bool _isStanding;
 
     Vector3 _hipTargetPos;
+
+    Vector3 _defaultCenter;
+    float _defaultHeight;
 
     void Start()
     {
         _anim = GetComponent<Animator>();
         _controller = GetComponent<CharacterController>();
         _rigidbody = GetComponent<Rigidbody>();
+        _defaultCenter = _controller.center;
+        _defaultHeight = _controller.height;
     }
 
     void Update()
@@ -57,17 +63,17 @@ public class PlayerController : MonoBehaviour
             transform.forward = Vector3.Slerp(transform.forward, moveDir, _rotationSpeed);
         }
 
-        _controller.Move(_speed * Time.deltaTime * transform.forward);
-        _controller.Move(_jumpVelocity * Time.deltaTime * Vector3.up);
+        _controller.Move(_speed * _animationSpeed * Time.deltaTime * transform.forward);
+        _controller.Move(_upperVelocity * Time.deltaTime * Vector3.up);
 
-        _jumpVelocity -= _gravity * Time.deltaTime;
+        _upperVelocity -= _gravity * Time.deltaTime;
         print(_controller.velocity);
-        print(_jumpVelocity);
+        print(_upperVelocity);
 
         _legBounce = Mathf.Clamp01(_legBounce + Time.deltaTime * (_isGrounded ? _bounceIncreaseRate : -_bounceDecreaseRate));
     }
 
-    void Bounce()
+    private void OnAnimatorIK(int layerIndex)
     {
         var left = _anim.GetIKPosition(AvatarIKGoal.LeftFoot);
         var right = _anim.GetIKPosition(AvatarIKGoal.RightFoot);
@@ -78,34 +84,19 @@ public class PlayerController : MonoBehaviour
         Physics.Raycast(leftRay, out var leftHit, _hipHeight, _groundLayerMask);
         Physics.Raycast(rightRay, out var rightHit, _hipHeight, _groundLayerMask);
 
-        var between = (leftHit.point + rightHit.point) / 2;
+        var yOffset = Mathf.Abs(leftHit.point.y - rightHit.point.y);
+        _controller.center = Vector3.Lerp(_controller.center, _defaultCenter + Vector3.up * yOffset / 2, Time.deltaTime);
+        _controller.height = _defaultHeight - yOffset;
 
-        var diff = between.y - transform.position.y;
-        if (diff > 0)
+        if (_controller.isGrounded)
         {
-            _controller.Move(diff * _legBounce * Vector3.up);
-        }
-
-        print($"leftFoot: {leftHit.collider != null}, rightFoot:{rightHit.collider != null}");
-
-        var hip = _anim.GetBoneTransform(HumanBodyBones.Hips).position.y - between.y;
-        print(hip);
-        if (_jumpVelocity <= 0 && hip < _hipHeight)
-        {
-            _isGrounded = true;
             _anim.SetBool("IsGrounded", true);
-            _jumpVelocity = Mathf.Lerp(_jumpVelocity, 0, _legBounce);
+            _upperVelocity = Mathf.Lerp(_upperVelocity, 0, _legBounce);
         }
         else
         {
-            _isGrounded = false;
             _anim.SetBool("IsGrounded", false);
         }
-    }
-
-    private void OnAnimatorIK(int layerIndex)
-    {
-        Bounce();
     }
 
     void OnMove(InputValue value)
@@ -118,7 +109,7 @@ public class PlayerController : MonoBehaviour
         if (value.isPressed)
         {
             var _jumpTime = Mathf.Sqrt(2 * _jumpHeight / _gravity);
-            _jumpVelocity = (_jumpHeight + _gravity * _jumpTime * _jumpTime / 2) / _jumpTime;
+            _upperVelocity = (_jumpHeight + _gravity * _jumpTime * _jumpTime / 2) / _jumpTime;
             _isGrounded = false;
             _anim.SetTrigger("Jump");
         }
