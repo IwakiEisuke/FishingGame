@@ -565,7 +565,7 @@ CharacterController:
   m_Radius: 0.4
   m_SlopeLimit: 45
   m_StepOffset: 0.5
-  m_SkinWidth: 0.08
+  m_SkinWidth: 0.04
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 1, z: 0}
 --- !u!95 &201801930
@@ -624,12 +624,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _enableHint: 0
-  _rayDistance: 2
+  _rayDistance: 1
   _footHeight: 0.12
   _footRadius: 0.1
   _layerMask:
     serializedVersion: 2
-    m_Bits: 55
+    m_Bits: 183
+  _lengthFromHeelToToes: 0.1
+  _maxIKLength: 0.5
   _left: {fileID: 2013686688}
   _leftPositionWeight: 1
   _leftRotationWeight: 1
@@ -686,7 +688,7 @@ MonoBehaviour:
   _animationSpeed: 1
   _moveDirectionSpeed: 0.375
   _rotationSpeed: 0.253
-  _jumpHeight: 2
+  _jumpHeight: 1
   _gravity: 18
   _groundLayerMask:
     serializedVersion: 2
@@ -2576,6 +2578,7 @@ GameObject:
   - component: {fileID: 1072387722}
   - component: {fileID: 1072387721}
   - component: {fileID: 1072387720}
+  - component: {fileID: 1072387726}
   m_Layer: 0
   m_Name: FreeLook Camera
   m_TagString: Untagged
@@ -2611,8 +2614,8 @@ MonoBehaviour:
         CancelDeltaTime: 0
       InputValue: 0
       Driver:
-        AccelTime: 0.2
-        DecelTime: 0.2
+        AccelTime: 0
+        DecelTime: 0
     - Name: Look Orbit Y
       Owner: {fileID: 1072387723}
       Enabled: 1
@@ -2624,8 +2627,8 @@ MonoBehaviour:
         CancelDeltaTime: 0
       InputValue: 0
       Driver:
-        AccelTime: 0.2
-        DecelTime: 0.2
+        AccelTime: 0
+        DecelTime: 0
     - Name: Orbit Scale
       Owner: {fileID: 1072387723}
       Enabled: 1
@@ -2673,14 +2676,14 @@ MonoBehaviour:
     ScreenPosition: {x: 0, y: 0}
     DeadZone:
       Enabled: 0
-      Size: {x: 0.2, y: 0.2}
+      Size: {x: 0, y: 0}
     HardLimits:
       Enabled: 0
       Size: {x: 0.8, y: 0.8}
       Offset: {x: 0, y: 0}
   CenterOnActivate: 1
-  TargetOffset: {x: 0, y: 1.44, z: 0}
-  Damping: {x: 0.5, y: 0.5}
+  TargetOffset: {x: 0, y: 2, z: 0}
+  Damping: {x: 0, y: 0}
   Lookahead:
     Enabled: 0
     Time: 0
@@ -2701,7 +2704,7 @@ MonoBehaviour:
   TargetOffset: {x: 0, y: 0, z: 0}
   TrackerSettings:
     BindingMode: 4
-    PositionDamping: {x: 1, y: 1, z: 1}
+    PositionDamping: {x: 0, y: 0, z: 0}
     AngularDampingMode: 0
     RotationDamping: {x: 1, y: 1, z: 1}
     QuaternionDamping: 1
@@ -2709,15 +2712,15 @@ MonoBehaviour:
   Radius: 10
   Orbits:
     Top:
-      Radius: 2
-      Height: 5
+      Radius: 0.5
+      Height: 6
     Center:
       Radius: 4
-      Height: 2.25
+      Height: 2
     Bottom:
-      Radius: 2.5
-      Height: 0.1
-    SplineCurvature: 0.5
+      Radius: 1.5
+      Height: -2
+    SplineCurvature: 0.442
   RecenteringTarget: 2
   HorizontalAxis:
     Value: 0
@@ -2800,13 +2803,52 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1072387719}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.09973304, y: -9.25096e-18, z: -1.4890273e-17, w: 0.99501425}
-  m_LocalPosition: {x: -9.44, y: 2.2499962, z: 2.6399999}
+  m_LocalRotation: {x: 0.0000000037777923, y: -0.000000029774702, z: 1.1248264e-16, w: 1}
+  m_LocalPosition: {x: -9.44, y: 1.9999962, z: 2.6399999}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1072387726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1072387719}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbe43d662878a7c43bcd44d43c9e2094, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  CollideAgainst:
+    serializedVersion: 2
+    m_Bits: 128
+  IgnoreTag: 
+  TransparentLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  MinimumDistanceFromTarget: 0.3
+  AvoidObstacles:
+    Enabled: 1
+    DistanceLimit: 0
+    MinimumOcclusionTime: 0
+    CameraRadius: 0.4
+    UseFollowTarget:
+      Enabled: 0
+      YOffset: 0
+    Strategy: 0
+    MaximumEffort: 4
+    SmoothingTime: 0
+    Damping: 0.4
+    DampingWhenOccluded: 0.2
+  ShotQualityEvaluation:
+    Enabled: 0
+    OptimalDistance: 10
+    NearLimit: 5
+    FarLimit: 30
+    MaxQualityBoost: 0.2
 --- !u!1 &1085373772
 GameObject:
   m_ObjectHideFlags: 0
@@ -2819,7 +2861,7 @@ GameObject:
   - component: {fileID: 1085373775}
   - component: {fileID: 1085373774}
   - component: {fileID: 1085373773}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Ground
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6956,8 +6998,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1866382733}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.099733055, y: -1.0852486e-17, z: 1.0877749e-18, w: 0.99501425}
-  m_LocalPosition: {x: -9.44, y: 2.2499962, z: 2.6399999}
+  m_LocalRotation: {x: 0.0000000037777923, y: -0.000000029774702, z: 1.1248264e-16, w: 1}
+  m_LocalPosition: {x: -9.44, y: 1.9999962, z: 2.6399999}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7432,7 +7474,7 @@ GameObject:
   - component: {fileID: 2140273046}
   - component: {fileID: 2140273045}
   - component: {fileID: 2140273044}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: terrain
   m_TagString: Untagged
   m_Icon: {fileID: 0}
