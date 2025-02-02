@@ -18,6 +18,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField, Range(0.01f, 5f)] float _bounceIncreaseRate = 1.5f;
     [SerializeField] float _hipHeight = 1f;
     [SerializeField] float _dampTime = 0.05f; // アニメーション遷移
+    [SerializeField] float _maxIKLength = 0.5f;
 
     Vector2 _rawInput;
     Vector2 _input;
@@ -80,15 +81,18 @@ public class PlayerController : MonoBehaviour
         var left = _anim.GetIKPosition(AvatarIKGoal.LeftFoot);
         var right = _anim.GetIKPosition(AvatarIKGoal.RightFoot);
 
-        var leftRay = new Ray(left + _hipHeight * Vector3.up, Vector3.down);
-        var rightRay = new Ray(right + _hipHeight * Vector3.up, Vector3.down);
+        var leftFloating = _anim.GetBoneTransform(HumanBodyBones.LeftFoot).position.y - left.y;
+        var rightFloating = _anim.GetBoneTransform(HumanBodyBones.RightFoot).position.y - right.y;
 
-        Physics.Raycast(leftRay, out var leftHit, _hipHeight * 2, _groundLayerMask);
-        Physics.Raycast(rightRay, out var rightHit, _hipHeight * 2, _groundLayerMask);
+        var floatingHeight = Mathf.Max(leftFloating, rightFloating);
+        print(floatingHeight);
 
-        var yOffset = Mathf.Abs(leftHit.point.y - rightHit.point.y);
+        var yOffset = Mathf.Abs(left.y - right.y);
 
-        AdjustControllerWithFootIK(yOffset);
+        if (yOffset < _maxIKLength)
+            AdjustControllerWithFootIK(yOffset);
+        else
+            AdjustControllerWithFootIK(0);
 
         if (_controller.isGrounded)
         {
@@ -103,7 +107,9 @@ public class PlayerController : MonoBehaviour
 
     void AdjustControllerWithFootIK(float yOffset)
     {
-        _controller.center = Vector3.MoveTowards(_controller.center, _defaultCenter + Vector3.up * yOffset / 2, Time.deltaTime);
+        //_controller.center = Vector3.MoveTowards(_controller.center, _defaultCenter + Vector3.up * yOffset / 2, Time.deltaTime);
+        
+        _controller.center = _defaultCenter + Vector3.up * yOffset / 2;
         _controller.height = _defaultHeight - yOffset;
     }
 

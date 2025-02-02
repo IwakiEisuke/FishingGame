@@ -7,16 +7,14 @@ public class FootIK : MonoBehaviour
     [Header("General")]
     [SerializeField] float _footHeight = 0.2f;
     [SerializeField] float _footRadius = 0.2f;
-    [SerializeField, Tooltip("踵から爪先までの長さ（未使用）")] float _lengthFromHeelToToes = 0.1f;
+    //[SerializeField, Tooltip("踵から爪先までの長さ（未使用）")] float _lengthFromHeelToToes = 0.1f;
     [SerializeField, Tooltip("足を上げる最大の高さ")] float _maxIKLength = 0.5f;
-    [SerializeField, Tooltip("踵と爪先の最大高低差")] float _maxToesHeight = 0.1f;
-    [SerializeField, Tooltip("踵・爪先の位置から探索する地面までの距離")] float _groundCheckRayDistance = 1;
+    [SerializeField, Tooltip("踵と爪先の最大高低差")] float _maxSlopeHeight = 0.1f;
+    [SerializeField, Tooltip("足をIKターゲットに持っていく速さ")] float _footMoveSpeed = 0.2f;
     [Header("LeftFoot")]
-    [SerializeField] Transform _left;
     [SerializeField, Range(0, 1)] float _leftPositionWeight = 1;
     [SerializeField, Range(0, 1)] float _leftRotationWeight = 1;
     [Header("RightFoot")]
-    [SerializeField] Transform _right;
     [SerializeField, Range(0, 1)] float _rightPositionWeight = 1;
     [SerializeField, Range(0, 1)] float _rightRotationWeight = 1;
     [Header("LeftKnee")]
@@ -41,42 +39,84 @@ public class FootIK : MonoBehaviour
         _rightPositionWeight = _anim.GetFloat("RightIKWeight");
         _rightRotationWeight = _anim.GetFloat("RightIKWeight");
 
-        SetFootIK(AvatarIKGoal.LeftFoot, HumanBodyBones.LeftToes, _leftPositionWeight, _leftRotationWeight);
+        SetFootIK(FootSide.Left, _leftPositionWeight, _leftRotationWeight);
         SetHintIK(AvatarIKHint.LeftKnee, _leftKneeWeight, _leftKneeAnchor);
 
-        SetFootIK(AvatarIKGoal.RightFoot, HumanBodyBones.RightToes, _rightPositionWeight, _rightRotationWeight);
+        SetFootIK(FootSide.Right, _rightPositionWeight, _rightRotationWeight);
         SetHintIK(AvatarIKHint.RightKnee, _rightKneeWeight, _rightKneeAnchor);
     }
 
-    private void SetFootIK(AvatarIKGoal part, HumanBodyBones t, float positionWeight, float rotationWeight)
+    private void SetFootIK(FootSide side, float positionWeight, float rotationWeight)
     {
-        var heelOrigin = _anim.GetIKPosition(part);
-        Ray heelRay = new(heelOrigin + Vector3.up * _maxIKLength, Vector3.down);
+        var part = side == FootSide.Left ? AvatarIKGoal.LeftFoot : AvatarIKGoal.RightFoot;
+        var bone = side == FootSide.Left ? HumanBodyBones.LeftToes : HumanBodyBones.RightToes;
 
-        var toesOrigin = _anim.GetBoneTransform(t).transform.position;
-        Ray toesRay = new(toesOrigin + Vector3.up * _maxIKLength, Vector3.down);
+        var ikLength = Vector3.up * _maxIKLength;
 
-        var isHitHeel = Physics.Raycast(heelRay, out var heelHit, _maxIKLength + _groundCheckRayDistance, _layerMask);
-        var isHitToes = Physics.Raycast(toesRay, out var toesHit, _maxIKLength + _groundCheckRayDistance, _layerMask);
+        var heelRay = new Ray(_anim.GetIKPosition(part) + ikLength, Vector3.down);
+        var toesRay = new Ray(_anim.GetBoneTransform(bone).transform.position + ikLength, Vector3.down);
 
-        var footAngleHeight = Mathf.Abs(heelHit.point.y - toesHit.point.y);
+        var isHitHeel = Physics.Raycast(heelRay, out var heelHit, _layerMask);
+        if (!isHitHeel) heelHit.point = heelRay.origin + heelRay.direction * (_maxIKLength + _maxSlopeHeight);
 
-        var newFootForward = toesHit.point - heelHit.point;
-        var newFootRotation = Quaternion.LookRotation(newFootForward);
+        var isHitToes = Physics.Raycast(toesRay, out var toesHit, _layerMask);
+        if (!isHitToes) toesHit.point = toesRay.origin + toesRay.direction * (_maxIKLength + _maxSlopeHeight);
 
-        var newIKPos = heelHit.collider ? heelHit.point : toesHit.collider ? toesHit.point : _anim.GetIKPosition(part);
-        newIKPos.y += _footHeight;
+        var firstHit = heelHit.point.y > toesHit.point.y ? FootParts.Heel : FootParts.Toes;
+
+        var targetPos = Vector3.zero;
+        var targetRot = Quaternion.identity;
+
+        if (isHitHeel && isHitToes)
+        {
+            var slopeHeight = Mathf.Abs(toesHit.point.y - heelHit.point.y);
+
+            if (slopeHeight < _maxSlopeHeight)
+            {
+                targetRot = Quaternion.LookRotation(toesHit.point - heelHit.point);
+            }
+            else
+            {
+                var footLook = toesHit.point - heelHit.point;
+                footLook.y = 0;
+                targetRot = Quaternion.LookRotation(footLook);
+            }
+
+            if (firstHit == FootParts.Heel)
+            {
+                targetPos = heelHit.point;
+            }
+            else
+            {
+                targetPos = new Vector3(heelHit.point.x, toesHit.point.y, heelHit.point.z);
+            }
+        }
+        else if (isHitHeel)
+        {
+            targetPos = heelHit.point;
+            targetRot = _anim.GetIKRotation(part);
+        }
+        else if (isHitToes)
+        {
+            targetPos = new Vector3(heelHit.point.x, toesHit.point.y, heelHit.point.z);
+            targetRot = _anim.GetIKRotation(part);
+        }
+
+        targetPos.y += _footHeight;
+
+        var posWeight = side == FootSide.Left ? _leftPositionWeight : _rightPositionWeight;
+        var rotWeight = side == FootSide.Left ? _leftRotationWeight : _rightRotationWeight;
 
         _anim.SetIKPositionWeight(part, positionWeight);
-        _anim.SetIKRotationWeight(part, rotationWeight); 
+        _anim.SetIKRotationWeight(part, rotationWeight);
 
-        _anim.SetIKPosition(part, newIKPos);
-        _anim.SetIKRotation(part, newFootRotation);
+        _anim.SetIKPosition(part, targetPos);
+        _anim.SetIKRotation(part, targetRot);
 
-
-        Debug.DrawRay(heelRay.origin, heelRay.direction * (_maxIKLength + _groundCheckRayDistance), Color.magenta);
-        Debug.DrawRay(toesRay.origin, toesRay.direction * (_maxIKLength + _groundCheckRayDistance), Color.cyan);
+        Debug.DrawRay(heelRay.origin, heelRay.direction * (_maxIKLength + _maxSlopeHeight), Color.magenta);
+        Debug.DrawRay(toesRay.origin, toesRay.direction * (_maxIKLength + _maxSlopeHeight), Color.cyan);
         Debug.DrawLine(heelHit.point, toesHit.point, Color.yellow);
+        Debug.DrawLine(toesHit.point + Vector3.up * _maxSlopeHeight, toesHit.point - Vector3.up * _maxSlopeHeight, Color.yellow);
 
         _gismos += () =>
         {
@@ -85,6 +125,16 @@ public class FootIK : MonoBehaviour
             Gizmos.color = Color.cyan;
             Gizmos.DrawSphere(toesHit.point, 0.05f);
         };
+    }
+
+    enum FootParts
+    {
+        Heel, Toes
+    }
+
+    enum FootSide
+    {
+        Left, Right
     }
 
     private void SetHintIK(AvatarIKHint part, float positionWeight, Transform anchor)
