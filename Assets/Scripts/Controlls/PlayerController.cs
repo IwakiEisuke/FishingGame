@@ -7,18 +7,18 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float _maxSpeed = 3f;
     [SerializeField] float _animationSpeed = 1f;
     [SerializeField, Range(0, 1)] float _moveDirectionSpeed = 0.2f;
+    [SerializeField, Range(0, 1)] float _moveDamping = 0.2f;
+    [SerializeField, Range(0, 10)] float _moveStartDamp = 0.2f;
     [SerializeField, Range(0, 1)] float _rotationSpeed = 0.2f;
     [Header("Jump")]
     [SerializeField] float _jumpHeight = 1f;
     [SerializeField] float _gravity = 9.8f;
     [SerializeField] LayerMask _groundLayerMask;
-    [Header("IK")]
+    [Header("Animation")]
+    [SerializeField] float _dampTime = 0.05f; // アニメーション遷移
     [SerializeField, Range(0, 1)] float _legBounce = 0.5f;
     [SerializeField, Range(0.01f, 5f)] float _bounceDecreaseRate = 0.2f;
     [SerializeField, Range(0.01f, 5f)] float _bounceIncreaseRate = 1.5f;
-    [SerializeField] float _hipHeight = 1f;
-    [SerializeField] float _dampTime = 0.05f; // アニメーション遷移
-    [SerializeField] float _maxIKLength = 0.5f;
 
     Vector2 _rawInput;
     Vector2 _input;
@@ -29,26 +29,32 @@ public class PlayerController : MonoBehaviour
     float _speed;
     float _upwardVelocity;
 
-    Vector3 _defaultCenter;
-    float _defaultHeight;
-
-    float _bodyPosOffset;
+    public Vector3 Velocity { get; private set; }
+    public float HorizontalVelocityMagnitude => Mathf.Sqrt(Velocity.x * Velocity.x + Velocity.z * Velocity.z);
 
     void Start()
     {
         _anim = GetComponent<Animator>();
         _controller = GetComponent<CharacterController>();
         _rb = GetComponent<Rigidbody>();
-        _defaultCenter = _controller.center;
-        _defaultHeight = _controller.height;
     }
 
     void Update()
     {
+        if (_rawInput.magnitude > 0.1f)
+        {
+            _moveDamping += Time.deltaTime * _moveStartDamp;
+        }
+        else
+        {
+            _moveDamping -= Time.deltaTime * _moveStartDamp;
+        }
+        _moveDamping = Mathf.Clamp01(_moveDamping);
+
         _input = Vector2.MoveTowards(_input, _rawInput, _moveDirectionSpeed);
         _anim.speed = _animationSpeed;
 
-        _speed = _input.magnitude * _maxSpeed;
+        _speed = _input.magnitude * _maxSpeed * _moveDamping;
 
         _anim.SetFloat("InputMagnitude", _input.magnitude, _dampTime, Time.deltaTime);
         _anim.SetFloat("Speed", _speed, _dampTime, Time.deltaTime);
@@ -61,39 +67,9 @@ public class PlayerController : MonoBehaviour
             transform.forward = Vector3.Slerp(transform.forward, moveDir, _rotationSpeed);
         }
 
-        _controller.Move(_speed * _animationSpeed * Time.deltaTime * moveDir);
+        var horizontalVelocity = _speed * _animationSpeed * moveDir;
+        _controller.Move(horizontalVelocity * Time.deltaTime);
         _controller.Move(_upwardVelocity * Time.deltaTime * Vector3.up);
-
-        _upwardVelocity -= _gravity * Time.deltaTime;
-
-        _legBounce = Mathf.Clamp01(_legBounce + Time.deltaTime * (_controller.isGrounded ? _bounceIncreaseRate : -_bounceDecreaseRate));
-    }
-
-    private void OnGUI()
-    {
-        GUILayout.BeginVertical();
-        GUILayout.Label($"_controller.velocity: {_controller.velocity}");
-        GUILayout.Label($"_upperVelocity: {_upwardVelocity}");
-        GUILayout.Label($"isGrounded: {_controller.isGrounded}");
-        GUILayout.EndVertical();
-    }
-
-    private void OnAnimatorIK(int layerIndex)
-    {
-        var left = _anim.GetIKPosition(AvatarIKGoal.LeftFoot);
-        var right = _anim.GetIKPosition(AvatarIKGoal.RightFoot);
-
-        var leftFloating = _anim.GetBoneTransform(HumanBodyBones.LeftFoot).position.y - left.y;
-        var rightFloating = _anim.GetBoneTransform(HumanBodyBones.RightFoot).position.y - right.y;
-
-        var floatingHeight = Mathf.Max(leftFloating, rightFloating);
-
-        var yOffset = Mathf.Abs(left.y - right.y);
-
-        if (yOffset < _maxIKLength)
-            AdjustControllerWithFootIK(yOffset);
-        else
-            AdjustControllerWithFootIK(0);
 
         if (_controller.isGrounded)
         {
@@ -104,18 +80,21 @@ public class PlayerController : MonoBehaviour
         {
             _anim.SetBool("IsGrounded", false);
         }
+
+        _upwardVelocity -= _gravity * Time.deltaTime;
+        _legBounce = Mathf.Clamp01(_legBounce + Time.deltaTime * (_controller.isGrounded ? _bounceIncreaseRate : -_bounceDecreaseRate));
+
+        Velocity = horizontalVelocity + _upwardVelocity * Vector3.up;
     }
 
-    void AdjustControllerWithFootIK(float yOffset)
+    private void OnGUI()
     {
-        //_controller.center = _defaultCenter + Vector3.up * yOffset / 2;
-        //_controller.height = _defaultHeight - yOffset;
-
-        var currPos = _anim.GetBoneTransform(HumanBodyBones.Hips).position;
-        _anim.bodyPosition = Vector3.Lerp(_anim.bodyPosition, _anim.bodyPosition + Vector3.down * yOffset, 1f);
-        print($"{yOffset} {_anim.bodyPosition}");
+        GUILayout.BeginVertical();
+        GUILayout.Label($"_controller.velocity: {_controller.velocity}");
+        GUILayout.Label($"_upperVelocity: {_upwardVelocity}");
+        GUILayout.Label($"isGrounded: {_controller.isGrounded}");
+        GUILayout.EndVertical();
     }
-
 
     void OnMove(InputValue value)
     {
@@ -130,12 +109,5 @@ public class PlayerController : MonoBehaviour
             _upwardVelocity = (_jumpHeight + _gravity * _jumpTime * _jumpTime / 2) / _jumpTime;
             _anim.Play("Jump");
         }
-    }
-
-    private void OnDrawGizmos()
-    {
-        Gizmos.color = Color.blue;
-        Gizmos.DrawWireSphere(transform.position + Vector3.up * _hipHeight, 0.05f);
-        Gizmos.DrawLine(transform.position, transform.position + Vector3.up * _hipHeight);
     }
 }
