@@ -32,6 +32,8 @@ public class PlayerController : MonoBehaviour
     Vector3 _defaultCenter;
     float _defaultHeight;
 
+    float _bodyPosOffset;
+
     void Start()
     {
         _anim = GetComponent<Animator>();
@@ -85,7 +87,6 @@ public class PlayerController : MonoBehaviour
         var rightFloating = _anim.GetBoneTransform(HumanBodyBones.RightFoot).position.y - right.y;
 
         var floatingHeight = Mathf.Max(leftFloating, rightFloating);
-        print(floatingHeight);
 
         var yOffset = Mathf.Abs(left.y - right.y);
 
@@ -107,10 +108,12 @@ public class PlayerController : MonoBehaviour
 
     void AdjustControllerWithFootIK(float yOffset)
     {
-        //_controller.center = Vector3.MoveTowards(_controller.center, _defaultCenter + Vector3.up * yOffset / 2, Time.deltaTime);
-        
-        _controller.center = _defaultCenter + Vector3.up * yOffset / 2;
-        _controller.height = _defaultHeight - yOffset;
+        //_controller.center = _defaultCenter + Vector3.up * yOffset / 2;
+        //_controller.height = _defaultHeight - yOffset;
+
+        var currPos = _anim.GetBoneTransform(HumanBodyBones.Hips).position;
+        _anim.bodyPosition = Vector3.Lerp(_anim.bodyPosition, _anim.bodyPosition + Vector3.down * yOffset, 1f);
+        print($"{yOffset} {_anim.bodyPosition}");
     }
 
 
@@ -129,12 +132,10 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-#if UNITY_EDITOR
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.blue;
         Gizmos.DrawWireSphere(transform.position + Vector3.up * _hipHeight, 0.05f);
         Gizmos.DrawLine(transform.position, transform.position + Vector3.up * _hipHeight);
     }
-#endif
 }

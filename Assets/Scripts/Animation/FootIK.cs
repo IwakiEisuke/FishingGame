@@ -11,6 +11,7 @@ public class FootIK : MonoBehaviour
     [SerializeField, Tooltip("足を上げる最大の高さ")] float _maxIKLength = 0.5f;
     [SerializeField, Tooltip("踵と爪先の最大高低差")] float _maxSlopeHeight = 0.1f;
     [SerializeField, Tooltip("足をIKターゲットに持っていく速さ")] float _footMoveSpeed = 0.2f;
+    [SerializeField, Tooltip("Raycastを開始する高さ")] float _rayOriginHeight = 1f;
     [Header("LeftFoot")]
     [SerializeField, Range(0, 1)] float _leftPositionWeight = 1;
     [SerializeField, Range(0, 1)] float _leftRotationWeight = 1;
@@ -57,10 +58,10 @@ public class FootIK : MonoBehaviour
         var toesRay = new Ray(_anim.GetBoneTransform(bone).transform.position + ikLength, Vector3.down);
 
         var isHitHeel = Physics.Raycast(heelRay, out var heelHit, _layerMask);
-        if (!isHitHeel) heelHit.point = heelRay.origin + heelRay.direction * (_maxIKLength + _maxSlopeHeight);
+        if (!isHitHeel) heelHit.point = heelRay.origin - ikLength;
 
         var isHitToes = Physics.Raycast(toesRay, out var toesHit, _layerMask);
-        if (!isHitToes) toesHit.point = toesRay.origin + toesRay.direction * (_maxIKLength + _maxSlopeHeight);
+        if (!isHitToes) toesHit.point = toesRay.origin - ikLength;
 
         var firstHit = heelHit.point.y > toesHit.point.y ? FootParts.Heel : FootParts.Toes;
 
